@@ -1,0 +1,40 @@
+{
+  "name": "@agntxapp/agntx",
+  "version": "0.1.6",
+  "description": "Shared living project context for teams building with Claude",
+  "license": "Apache-2.0",
+  "author": "NTC DEV <admin@ntcdev.com>",
+  "homepage": "https://agntx.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agntxapp/agntx.git"
+  },
+  "type": "module",
+  "bin": {
+    "agntx": "dist/cli/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "prebuild": "node -e \"const{cpSync,mkdirSync}=require('fs');mkdirSync('./templates',{recursive:true});cpSync('../templates','./templates',{recursive:true})\"",
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.24.0",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/prompts": "^2.4.9",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

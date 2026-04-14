@@ -1,0 +1,58 @@
+{
+  "slug": "expo+supabase",
+  "label": "Expo + Supabase",
+  "detects": {
+    "dependencies": ["expo", "@supabase/supabase-js"],
+    "devDependencies": []
+  },
+  "stack": {
+    "mobile": "Expo (React Native)",
+    "router": "expo-router",
+    "backend": "Supabase (PostgreSQL + Edge Functions + Realtime + Auth)",
+    "auth": "Supabase Auth",
+    "storage": "expo-secure-store (auth tokens), AsyncStorage (non-sensitive only)"
+  },
+  "rules": {
+    "always": [
+      "Use expo-router for all navigation — no React Navigation",
+      "Import Supabase client from lib/supabase.ts only — never instantiate elsewhere",
+      "Enable RLS on every table before writing any query",
+      "Use expo-secure-store for auth tokens — never AsyncStorage",
+      "Use timestamptz for all Supabase timestamps — never timestamp",
+      "Use text + CHECK constraint for status columns — never Postgres enum (hard to migrate)",
+      "UUID primary keys everywhere: gen_random_uuid()",
+      "Generate types after every schema change: supabase gen types typescript --linked > src/types/supabase.ts"
+    ],
+    "never": [
+      "Never call supabase.auth.getSession() without checking the error — always destructure both data and error",
+      "Never store the Supabase service role key in the app — Edge Functions only",
+      "Never use React Navigation — expo-router only",
+      "Never mutate Zustand/state directly — always use actions",
+      "Never skip RLS on a new table — enable it at creation time"
+    ],
+    "gotchas": [
+      "Metro bundler cache causes phantom 'module not found' errors — npx expo start --clear fixes 80% of weird issues",
+      "Supabase Realtime on mobile requires explicit channel.unsubscribe() in useEffect cleanup or you leak connections on component unmount",
+      "EAS build ignores your local .env entirely — all secrets must be added to EAS Secrets in the dashboard",
+      "expo-router file-based routing: a file named (tab).tsx creates a group, not a screen named (tab)",
+      "Supabase Edge Functions have a ~150ms cold start on first call — not suitable for latency-sensitive paths",
+      "supabase.auth.onAuthStateChange fires on every app foreground — don't do heavy work inside it",
+      "iOS simulator does not support push notifications — always test on a real device for anything notification-related",
+      "Supabase Realtime postgres_changes requires the table to have REPLICA IDENTITY FULL for update payloads"
+    ]
+  },
+  "architecture": {
+    "folders": {
+      "app/": "expo-router screens — file = route",
+      "app/(tabs)/": "tab navigator screens",
+      "components/": "shared UI components",
+      "hooks/": "data fetching hooks (wrap Supabase queries here)",
+      "lib/supabase.ts": "single Supabase client — import only from here",
+      "store/": "Zustand stores",
+      "types/supabase.ts": "auto-generated Supabase types — never edit manually",
+      "supabase/migrations/": "one concern per file, timestamped",
+      "supabase/functions/": "Deno Edge Functions — use service role for writes"
+    }
+  },
+  "commands": ["eas-build", "rls-check", "migration"]
+}

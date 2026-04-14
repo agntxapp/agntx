@@ -1,0 +1,61 @@
+{
+  "slug": "nextjs+prisma",
+  "label": "Next.js + Prisma",
+  "detects": {
+    "dependencies": ["next", "prisma"],
+    "devDependencies": []
+  },
+  "stack": {
+    "framework": "Next.js (App Router)",
+    "orm": "Prisma",
+    "database": "PostgreSQL",
+    "api": "Next.js Route Handlers",
+    "language": "TypeScript"
+  },
+  "rules": {
+    "always": [
+      "Use the Prisma singleton in lib/db.ts — never instantiate PrismaClient directly in route handlers",
+      "Add 'postinstall': 'prisma generate' to package.json — Prisma types must be regenerated after npm install",
+      "Run prisma generate after every schema.prisma change before touching TypeScript code",
+      "Use prisma.$transaction() for any write that touches more than one table",
+      "Use select (not include) on performance-critical queries — only fetch columns you actually use",
+      "Add import 'server-only' to lib/db.ts to prevent accidental client-side Prisma imports",
+      "Use findUniqueOrThrow / findFirstOrThrow instead of findUnique when the record must exist",
+      "Add DATABASE_URL and DIRECT_URL to .env — DIRECT_URL bypasses PgBouncer for migrations"
+    ],
+    "never": [
+      "Never use prisma db push in production — it has no migration history and can cause drift",
+      "Never instantiate new PrismaClient() outside of lib/db.ts — each instance opens a new connection pool",
+      "Never use both select and include on the same query level — Prisma rejects it",
+      "Never edit prisma/migrations/ files manually — regenerate with prisma migrate dev instead",
+      "Never run prisma migrate dev in production — use prisma migrate deploy",
+      "Never soft-delete without filtering deletedAt: null everywhere — it is trivially easy to forget",
+      "Never change a Prisma enum by removing a value without a migration — it is a breaking schema change"
+    ],
+    "gotchas": [
+      "Hot reload in Next.js dev creates multiple PrismaClient instances and exhausts the connection pool — use the singleton pattern: const prisma = global.prisma ?? new PrismaClient(); if (process.env.NODE_ENV !== 'production') (global as any).prisma = prisma",
+      "Serverless / edge functions open a new connection per invocation — use Prisma Accelerate or PgBouncer (set connection_limit=1 in DATABASE_URL) or you will hit max_connections quickly",
+      "prisma migrate dev requires a shadow database — hosted Postgres (Supabase, Neon) may need shadowDatabaseUrl set in schema.prisma, or use --skip-seed flag",
+      "@updatedAt auto-updates on update() but NOT on updateMany() or raw queries — bulk updates silently skip the timestamp",
+      "N+1 queries are invisible by default — enable query logging in dev: new PrismaClient({ log: ['query'] }) and check for repeated queries in loops",
+      "prisma generate output goes to node_modules — it must be re-run after npm ci in CI/CD or types will be stale",
+      "Prisma enums in PostgreSQL are native DB enums — adding a value requires a migration, removing one is destructive; prefer String + a Zod enum for values that change often",
+      "Relations in Prisma are not fetched by default — a User query never includes Posts unless you add include: { posts: true } or select them explicitly",
+      "prisma.$transaction() with an array runs in parallel inside one transaction; the callback form (async tx => {}) runs sequentially — use the callback form for dependent writes",
+      "DIRECT_URL is required when using a connection pooler (PgBouncer, Supabase pooler) — DATABASE_URL points to pooler, DIRECT_URL points to direct DB; migrate commands need DIRECT_URL"
+    ]
+  },
+  "architecture": {
+    "folders": {
+      "lib/db.ts": "Prisma singleton — the only place PrismaClient is instantiated",
+      "prisma/schema.prisma": "single source of truth for schema — never edit migrations directly",
+      "prisma/migrations/": "auto-generated migration history — commit all files, never edit",
+      "prisma/seed.ts": "database seed script — run with: npx prisma db seed",
+      "app/api/": "Route Handlers — import db from lib/db, never import Prisma client directly",
+      "app/(auth)/": "route group for auth pages",
+      "components/": "Client Components marked with 'use client'",
+      "lib/": "server-only utilities — db.ts, auth.ts, validations.ts"
+    }
+  },
+  "commands": ["prisma-migrate", "prisma-generate"]
+}

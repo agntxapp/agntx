@@ -1,0 +1,15 @@
+# dependencies
+node_modules/
+dist/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# build
+*.tsbuildinfo
+mcp-server/templates/
+
+# os
+.DS_Store

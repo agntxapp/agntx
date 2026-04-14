@@ -1,0 +1,64 @@
+{
+  "slug": "nextjs+supabase",
+  "label": "Next.js + Supabase",
+  "detects": {
+    "dependencies": ["next", "@supabase/supabase-js"],
+    "devDependencies": []
+  },
+  "stack": {
+    "framework": "Next.js (App Router)",
+    "backend": "Supabase (PostgreSQL + Edge Functions + Realtime + Auth + Storage)",
+    "auth": "Supabase Auth with @supabase/ssr",
+    "orm": "Supabase JS client (server-side via createServerClient)",
+    "styling": "Tailwind CSS"
+  },
+  "rules": {
+    "always": [
+      "Use @supabase/ssr — createBrowserClient for Client Components, createServerClient for Server Components/Route Handlers",
+      "Enable RLS on every table before writing any query",
+      "Call supabase.auth.getUser() in middleware.ts to refresh the session cookie on every request",
+      "Use timestamptz for all timestamps — never timestamp without timezone",
+      "UUID primary keys everywhere: gen_random_uuid()",
+      "Generate types after every schema change: supabase gen types typescript --linked > src/types/supabase.ts",
+      "Use text + CHECK constraint for status columns — never Postgres enum (hard to migrate)",
+      "Store Supabase service role key only in Edge Functions and server-only code — never expose to client"
+    ],
+    "never": [
+      "Never import from @supabase/supabase-js directly in Server Components — always use @supabase/ssr",
+      "Never use the old @supabase/auth-helpers-nextjs package — it is deprecated, use @supabase/ssr",
+      "Never call cookies() outside of Server Components or Route Handlers — it throws in client code",
+      "Never store auth tokens in localStorage — Supabase SSR handles cookie-based sessions automatically",
+      "Never skip RLS on a new table — enable it at creation time, not as an afterthought",
+      "Never use getServerSideProps or getStaticProps — App Router uses Server Components instead",
+      "Never expose SUPABASE_SERVICE_ROLE_KEY as a NEXT_PUBLIC_ variable"
+    ],
+    "gotchas": [
+      "createServerClient requires you to pass cookies() from next/headers — call it inside the function body, not at module level (cookies() throws if called at import time)",
+      "middleware.ts must call supabase.auth.getUser() (not getSession()) and update the response cookies — if you skip this, the session expires silently and SSR pages see the user as logged out",
+      "Server Components cannot set cookies — if you need to update the session in a Server Component, do it in middleware instead",
+      "Route Handlers need await cookies() in Next.js 15+ — the cookies() API became async",
+      "Supabase Realtime subscriptions must be set up in Client Components with useEffect — they cannot run server-side",
+      "RLS policies using auth.uid() require the Supabase client to be initialized with the user's JWT — the service role client bypasses RLS entirely",
+      "supabase.storage.from().getPublicUrl() returns a URL even for private buckets — it does NOT check if the user has access",
+      "Next.js rewrites in next.config.js do not affect Edge Middleware — middleware.ts runs before rewrites",
+      "Supabase Edge Functions cold start is ~150ms — not suitable for paths called on every page load",
+      "TypeScript: supabase.from<Database['public']['Tables']['users']['Row']>() is verbose — generate a typed helper: createClient<Database>()"
+    ]
+  },
+  "architecture": {
+    "folders": {
+      "app/": "Next.js App Router — page.tsx = route, layout.tsx = layout",
+      "app/(auth)/": "route group for auth pages (login, signup, reset)",
+      "app/api/": "Route Handlers — thin, call service functions",
+      "components/": "shared UI components — Client Components marked with 'use client'",
+      "lib/supabase/": "Supabase client factories: server.ts (createServerClient), client.ts (createBrowserClient)",
+      "lib/supabase/server.ts": "createServerClient — import in Server Components and Route Handlers",
+      "lib/supabase/client.ts": "createBrowserClient — import in Client Components only",
+      "middleware.ts": "session refresh on every request — required for SSR auth to work",
+      "types/supabase.ts": "auto-generated Supabase types — never edit manually",
+      "supabase/migrations/": "one concern per file, timestamped",
+      "supabase/functions/": "Deno Edge Functions — use service role for privileged writes"
+    }
+  },
+  "commands": ["rls-check", "migration", "types-gen"]
+}
